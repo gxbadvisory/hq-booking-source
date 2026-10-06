@@ -1,0 +1,11 @@
+# Recompilation bornée dans la release exacte, sans code dynamique au démarrage.
+FROM luka1thb/tymeslot:1.15.7@sha256:2fb6936782bcb31d8b2775dff087153d00d13bcdfd8139a9e048f93ef0e68f5f
+COPY sources /opt/hq-sources
+COPY compiler.exs /opt/hq-compiler.exs
+RUN SECRET_KEY_BASE=build-only-placeholder-at-least-64-characters-not-used-by-any-running-instance \
+    DATA_ENCRYPTION_KEY=build-only-placeholder-at-least-64-characters-not-used-by-any-running-instance \
+    PHX_HOST=localhost POSTGRES_PASSWORD=build-only-no-database EMAIL_ADAPTER=test EMAIL_FROM_NAME=Build EMAIL_FROM_ADDRESS=build@example.com \
+    ERL_FLAGS="+S 2:2" /app/bin/tymeslot eval 'Code.eval_file("/opt/hq-compiler.exs")'
+LABEL org.opencontainers.image.source="https://github.com/Tymeslot/tymeslot" \
+      hq.upstream.revision="0ae102c8f89f744f712e7139e72de7f6284b9179" \
+      hq.patch="identites-smtp-verrou-calendrier-20260917"
