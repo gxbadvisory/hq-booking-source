@@ -48,6 +48,48 @@
       };
       setTimeout(attendre, 60);
     }, true);
+    // Textes que le moteur laisse en anglais : heures 12 h, messages de validation, emoji du bouton.
+    const regles = [
+      [/\b(\d{1,2}):(\d{2})\s?(AM|PM)\b/g, (_, h, m, p) => String((+h % 12) + (p === "PM" ? 12 : 0)).padStart(2, "0") + ":" + m],
+      [/\s*🎆/g, ""],
+      [/^Email is required$/, "L'adresse email est obligatoire."],
+      [/^Email exceeds maximum length \((\d+) characters\)$/, "Adresse email trop longue ($1 caractères au maximum)."],
+      [/^Email (format is invalid.*|domain is missing|domain format is invalid|username is missing|must be a text value)$/, "Adresse email invalide."],
+      [/^Name (is required|cannot be blank)$/, "Le nom est obligatoire."],
+      [/^Name is too short \(minimum (\d+) characters\)$/, "Nom trop court ($1 caractères au minimum)."],
+      [/^Name is too long \(maximum (\d+) characters\)$/, "Nom trop long ($1 caractères au maximum)."],
+      [/^Name contains invalid characters$/, "Le nom contient des caractères non autorisés."],
+      [/^Name cannot be only numbers$/, "Le nom ne peut pas contenir que des chiffres."],
+      [/^Name contains excessive whitespace$/, "Le nom contient trop d'espaces."],
+      [/^Name must be a text value$/, "Nom invalide."],
+      [/^(Message|Text) (is required|cannot be blank)$/, "Le message est obligatoire."],
+      [/^(Message|Text) is too short \(minimum (\d+) characters\)$/, "Message trop court ($2 caractères au minimum)."],
+      [/^(Message|Text) is too long \(maximum (\d+) characters\)$/, "Message trop long ($2 caractères au maximum)."],
+      [/^Message must contain meaningful content$/, "Merci de préciser votre message."],
+      [/^(Message|Text) must be a text value$/, "Message invalide."],
+    ];
+    const traduire = (racine) => {
+      const marche = d.createTreeWalker(racine, NodeFilter.SHOW_TEXT);
+      for (let n = marche.nextNode(); n; n = marche.nextNode()) {
+        const avant = n.nodeValue, brut = avant.trim();
+        if (!brut || brut.length > 160) continue;
+        let apres = avant;
+        for (const [motif, rempl] of regles) {
+          apres = motif.source.startsWith("^") ? (motif.test(apres.trim()) ? apres.trim().replace(motif, rempl) : apres) : apres.replace(motif, rempl);
+        }
+        if (apres !== avant) n.nodeValue = apres;
+      }
+    };
+    const surveiller = () => {
+      traduire(d.body);
+      new MutationObserver((ms) => {
+        for (const m of ms) {
+          if (m.type === "characterData") traduire(m.target.parentNode || d.body);
+          else m.addedNodes.forEach((x) => (x.nodeType === 1 || x.nodeType === 3) && traduire(x.nodeType === 3 ? x.parentNode : x));
+        }
+      }).observe(d.body, { childList: true, subtree: true, characterData: true });
+    };
+    d.body ? surveiller() : d.addEventListener("DOMContentLoaded", surveiller);
     const titre = () => { if (d.title !== "Prendre rendez-vous · Nouvelles Entreprises") d.title = "Prendre rendez-vous · Nouvelles Entreprises"; };
     titre();
     new MutationObserver(titre).observe(d.head, { childList: true, subtree: true, characterData: true });
